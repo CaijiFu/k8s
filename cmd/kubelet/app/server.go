@@ -123,10 +123,14 @@ const (
 
 // NewKubeletCommand creates a *cobra.Command object with default parameters
 func NewKubeletCommand() *cobra.Command {
-	cleanFlagSet := pflag.NewFlagSet(componentKubelet, pflag.ContinueOnError)
-	cleanFlagSet.SetNormalizeFunc(cliflag.WordSepNormalizeFunc)
-	kubeletFlags := options.NewKubeletFlags()
+	cleanFlagSet := pflag.NewFlagSet(componentKubelet, pflag.ContinueOnError) //定义空flagset
+	cleanFlagSet.SetNormalizeFunc(cliflag.WordSepNormalizeFunc)               //设置SetNormalizeFunc函数
+	kubeletFlags := options.NewKubeletFlags()                                 //初始化kubeflags
 
+	/*
+		初始化一个默认值的kubeletConfig，kubeletFlags和kubeletConfig都是kubelet配置
+		其中kubeletFlags是每个kubelet节点本地配置，而kubeletConfig是kubelet通过监听用户
+		提交的configMap可以在集群见间共享以及动态修改的配置。*/
 	kubeletConfig, err := options.NewKubeletConfiguration()
 	// programmer error
 	if err != nil {
@@ -171,7 +175,7 @@ is checked every 20 seconds (also configurable with a flag).`,
 			cmds := cleanFlagSet.Args()
 			if len(cmds) > 0 {
 				return fmt.Errorf("unknown command %+s", cmds[0])
-			}
+			} //检查是否指定错误的flag
 
 			// short-circuit on help
 			help, err := cleanFlagSet.GetBool("help")
@@ -180,20 +184,20 @@ is checked every 20 seconds (also configurable with a flag).`,
 			}
 			if help {
 				return cmd.Help()
-			}
+			} //展示help
 
 			// short-circuit on verflag
-			verflag.PrintAndExitIfRequested()
+			verflag.PrintAndExitIfRequested() //如名字所示，print help信息并且退出
 
 			// set feature gates from initial flags-based config
 			if err := utilfeature.DefaultMutableFeatureGate.SetFromMap(kubeletConfig.FeatureGates); err != nil {
 				return fmt.Errorf("failed to set feature gates from initial flags-based config: %w", err)
-			}
+			} // 通过kubeletConfig设置DefaultMutableFeatureGate,DefaultMutableFeatureGate就是一个并发安全的map
 
 			// validate the initial KubeletFlags
 			if err := options.ValidateKubeletFlags(kubeletFlags); err != nil {
 				return fmt.Errorf("failed to validate kubelet flags: %w", err)
-			}
+			} //验证kubeFlags，
 
 			if cleanFlagSet.Changed("pod-infra-container-image") {
 				klog.InfoS("--pod-infra-container-image will not be pruned by the image garbage collector in kubelet and should also be set in the remote runtime")
@@ -268,9 +272,9 @@ is checked every 20 seconds (also configurable with a flag).`,
 	}
 
 	// keep cleanFlagSet separate, so Cobra doesn't pollute it with the global flags
-	kubeletFlags.AddFlags(cleanFlagSet)
-	options.AddKubeletConfigFlags(cleanFlagSet, kubeletConfig)
-	options.AddGlobalFlags(cleanFlagSet)
+	kubeletFlags.AddFlags(cleanFlagSet)                        //将cleanFlagSet中flag值parse到kubeletFlags
+	options.AddKubeletConfigFlags(cleanFlagSet, kubeletConfig) //将cleanFlagSet parse到parse到kubeletConfig
+	options.AddGlobalFlags(cleanFlagSet)                       //添加一些新flag到cleanFlagSet
 	cleanFlagSet.BoolP("help", "h", false, fmt.Sprintf("help for %s", cmd.Name()))
 
 	// ugly, but necessary, because Cobra's default UsageFunc and HelpFunc pollute the flagset with global flags
